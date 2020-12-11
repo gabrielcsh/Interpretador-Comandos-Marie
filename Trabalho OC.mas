@@ -1,0 +1,244 @@
+ORG 2FF /2FFh + 1h(Jump) = 300h
+Jump InterpretaInstrucao /Pula para inicio da interpretação do programa
+
+/Instruções do programa (Início no endereço 300)
+Opcode1, 	HEX F /Se AC=0 então retorno = 0, senão (AC=1) retorno = valor do endereço
+Endereco1,	HEX 3C7 /Não utilizado se AC=0
+Opcode2, 	HEX 1 /Load
+Endereco2, 	HEX 3C1 /0001 
+Opcode3, 	HEX 3 /Add
+Endereco3, 	HEX 3C9 /0009
+Opcode4, 	HEX 4 /Subt
+Endereco4, 	HEX 3C8 /0008
+Opcode5, 	HEX 2 /Store
+Endereco5, 	HEX 3AB /Endereço do AC
+Opcode6, 	HEX 6 /Output (No exemplo, output = 2)
+Endereco6, 	HEX 000 /Endereço não importa para input
+Opcode7,	HEX 7 /Halt
+Endereco7, 	HEX 000 /Endereço não importa para Halt
+/Instruções possíveis: 1h(Load), 2h(Store), 3h(Add), 4h(Subt), 5h(Input)
+/6h(Output), 7h(Halt), 8h(Skipcond),9h(Jump),Fh(NovaInstrução) 
+
+/Execução do programa (Interpretação das instruções até achar uma instrução Halt)
+InterpretaInstrucao,LoadI EnderecoInstrucao
+					JnS VerificaHalt /Verifica se é um Halt (Fim do programa)
+                    JnS VerificaLoad /Verifica se instrução é um Load
+                    JnS VerificaStore /Verifica se a instrução é um Store
+                    JnS VerificaAdd /Verifica se a instrução é um Add
+                    JnS VerificaSubt /Verifica se a instrução é um Subt
+                    JnS VerificaInput /Verifica se a instrução é um Input
+                    JnS VerificaSkipcond /Verifica se a instrução é um Skipcond 
+                    JnS VerificaOutput /Verifica se a instrução é um Output 
+                    JnS VerificaIN /Verificar se é IN (Instrução Nova)
+                    JnS VerificaJump /Verifica se a instrução é um Jump
+                    Jump ProximaInstrucao /Vai para próxima instrução (mesmo que instrução não seja reconhecida)
+
+/Verifica ocorrência de Halt (instrução que finaliza o programa)
+VerificaHalt,		HEX 000 /Armazena endereço para retorno do JnS
+                    LoadI EnderecoInstrucao /Carrega valor do endereço salvo em "EnderecoInstrucao"
+                	Subt OpcodeHalt /Subtrai o Opcode da instrução Halt para fazer verificação 
+					Skipcond 400 /Verifica se a instrução tem o opcode de um Halt (quando resultado for = 0)
+    				JumpI VerificaHalt /Se não tiver, retorna para execução do programa
+                	Halt /Caso tenha, o programa é finalizado
+
+/Verifica ocorrência de Load
+VerificaLoad,		HEX 000
+                    LoadI EnderecoInstrucao
+					Subt OpcodeLoad
+					Skipcond 400
+                    JumpI VerificaLoad /Retorna para verificação de instrução
+                    LoadI EnderecoDados
+                    Store ValorCarregado
+                    LoadI ValorCarregado
+					Store AC
+                    Jump ProximaInstrucao
+
+/Verifica ocorrência de Store 
+VerificaStore,		HEX 000
+					LoadI EnderecoInstrucao
+					Subt OpcodeStore
+					Skipcond 400
+                    JumpI VerificaStore /Retorna para verificação de instrução
+                    LoadI EnderecoDados
+                    Store EnderecoCarregado
+                    Load AC
+                    StoreI EnderecoCarregado
+                    Jump ProximaInstrucao
+                    
+/ Verifica ocorrência de Add
+VerificaAdd,		HEX 000
+					LoadI EnderecoInstrucao
+					Subt OpcodeAdd
+					Skipcond 400
+                    JumpI VerificaAdd /Retorna para verificação de instrução
+					LoadI EnderecoDados
+					Store EnderecoCarregado
+					LoadI EnderecoCarregado
+                    Add AC
+					Store AC
+                    Jump ProximaInstrucao
+
+/ Verifica ocorrência de Add
+VerificaSubt,		HEX 000
+					LoadI EnderecoInstrucao
+					Subt OpcodeSubt
+					Skipcond 400
+                    JumpI VerificaSubt /Retorna para verificação de instrução
+					LoadI EnderecoDados
+					Store EnderecoCarregado
+					LoadI EnderecoCarregado
+                    Store EnderecoCarregado
+					Load AC
+					Subt EnderecoCarregado
+                    Store AC
+                    Jump ProximaInstrucao
+                    
+/ Verifica ocorrência de Input
+VerificaInput,		HEX 000
+					LoadI EnderecoInstrucao
+					Subt OpcodeInput
+					Skipcond 400
+                    JumpI VerificaInput /Retorna para verificação de instrução
+                    LoadI EnderecoDados
+                    Store EnderecoCarregado
+                    Load AC
+                    Input
+                    StoreI EnderecoCarregado
+                    Jump ProximaInstrucao
+
+/ Verifica ocorrẽncia de Skipcond 
+VerificaSkipcond,	HEX 000
+					LoadI EnderecoInstrucao
+					Subt OpcodeSkipcond
+                    Skipcond 400
+                    JumpI VerificaSkipcond /Retorna para verificação de instrução     
+                    JnS VerificaMenor
+                    JnS VerificaIgual
+                    Jump VerificaMaior
+
+VerificaMenor,		HEX 000
+					Load AC
+					Skipcond 000
+                    JumpI VerificaMenor
+					Load EnderecoInstrucao /Carrega endereço de memória atual
+                    Add Passo /Passa para o próximo endereço de memória
+                    Store EnderecoInstrucao /Armazena novo endereço
+                    Load EnderecoDados
+                    Add Passo
+                    Store EnderecoDados
+                    Jump ProximaInstrucao
+
+VerificaIgual,		HEX 000
+					Load AC
+					Skipcond 400
+                    JumpI VerificaIgual
+					Load EnderecoInstrucao /Carrega endereço de memória atual
+                    Add Passo /Passa para o próximo endereço de memória
+                    Store EnderecoInstrucao /Armazena novo endereço
+                    Load EnderecoDados
+                    Add Passo
+                    Store EnderecoDados
+                    Jump ProximaInstrucao
+
+VerificaMaior,		Load EnderecoInstrucao /Carrega endereço de memória atual
+                    Add Passo /Passa para o próximo endereço de memória
+                    Store EnderecoInstrucao /Armazena novo endereço
+                    Load EnderecoDados
+                    Add Passo
+                    Store EnderecoDados
+                    Jump ProximaInstrucao
+                    
+/ Verifica ocorrência de Output
+VerificaOutput,		HEX 000
+					LoadI EnderecoInstrucao
+					Subt OpcodeOutput
+					Skipcond 400
+                    JumpI VerificaOutput/Retorna para verificação de instrução
+                    Load AC
+                    Output
+					Jump ProximaInstrucao
+
+/ Verifica ocorrência de Jump
+VerificaJump,		HEX 000
+					LoadI EnderecoInstrucao
+					Subt OpcodeJump
+					Skipcond 400
+                    JumpI VerificaJump/Retorna para verificação de instrução
+                    LoadI EnderecoDados
+                    Subt Passo
+                    Store EnderecoInstrucao
+                    Load EnderecoInstrucao
+                    Add Um
+                    Store EnderecoDados
+                    Jump ProximaInstrucao                    
+                    
+/ Verifica ocorrência de IN (InstrucaoNova)
+VerificaIN,			HEX 000
+                    LoadI EnderecoInstrucao
+					Subt OpcodeIN
+					Skipcond 400
+                    JumpI VerificaIN /Retorna para execução do programa
+                    Jump ExecutaIN
+
+/ Execução da Instrução Nova
+ExecutaIN,			Load AC /Carrega valor do registrador acumulador no programa
+					Skipcond 400 /Verifica se AC = 0
+                    Jump Verifica1 /Pula para Verifica1
+                    Jump Multiplicacao /Se AC=0 então multiplicação é realizada
+
+Verifica1,			Subt Passo /Subtrai passo (um) do AC
+					Skipcond 400 /Verifica novamente se AC = 0
+					Jump ProximaInstrucao /Se AC!=0 e AC!=1, programa segue para próxima instrução
+                   	Jump Divisao /Se AC-1 = 0, Então AC=1, logo divisão é realizada
+
+Multiplicacao,		Load Zerar /Endereço * AC(0) = 0
+					Store AC
+					JumpI VerificaIN
+                 
+Divisao,			LoadI EnderecoInstrucao / Endereco/AC(1) = Endereco
+					Store AC
+					JumpI VerificaIN
+
+/Passa para o próximo endereço da memória com uma nova instrução
+ProximaInstrucao, 	Load EnderecoInstrucao /Carrega endereço de memória atual
+                    Add Passo /Passa para o próximo endereço de memória
+                    Store EnderecoInstrucao /Armazena novo endereço
+                    Load EnderecoDados
+                    Add Passo
+                    Store EnderecoDados
+                    jump InterpretaInstrucao /Faz interpretação de instrução no novo endereço
+ 
+AC,					HEX 0 /Registrador Acumulador simulado no programa
+EnderecoInstrucao,	HEX 300 /Endereco da Primeira Instrução
+EnderecoDados,		HEX 301 /Endereço do Primeiro endereço
+EnderecoCarregado,	HEX 0	/Endereco que vai ser utilizado na instrucao
+ValorCarregado,		HEX 0 /Valor existente no Endereço solicitado
+Passo,			 	DEC 2 /Passo para próxima instrução ou próximo endereço
+OpcodeLoad,			HEX 1 /Opcode da instrução Load
+OpcodeStore,		HEX 2 /Opcode da instrução Store
+OpcodeAdd,			HEX 3 /Opcode da instrução Add
+OpcodeSubt,			HEX 4 /Opcode da instrução Subt
+OpcodeInput,		HEX 5 /Opcode da instrução Input
+OpcodeOutput,		HEX 6 /Opcode da instrução Output
+OpcodeHalt,			HEX 7 /Opcode da instruçao Halt (indica o fim do programa)
+OpcodeSkipcond,		HEX 8 /Opcode da instrução Skipcond 
+OpcodeJump,			HEX 9 /Opcode da instrução Jump
+OpcodeIN,			HEX F /Opcode da instrução nova
+PulaSeMenor,		HEX 000
+PulaSeIgual,		HEX 400
+PulaSeMaior,		HEX 800
+Zerar,				HEX 0
+Um,					HEX 1
+RetornoInstrucao,	HEX 0
+
+/Endereços de Memoria simulados no programa
+Memoria1,  DEC 1  /End 362
+Memoria2,  DEC 2  /End 363
+Memoria3,  DEC 3  /End 364
+Memoria4,  DEC 4  /End 365
+Memoria5,  DEC 5  /End 366
+Memoria6,  DEC 6  /End 367
+Memoria7,  DEC 7  /End 368
+Memoria8,  DEC 8  /End 369
+Memoria9,  DEC 9  /End 36A
+Memoria10, DEC 10 /End 36B
